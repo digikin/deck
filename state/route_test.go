@@ -27,8 +27,7 @@ func TestRouteInsert(t *testing.T) {
 	route2.ID = kong.String("first")
 	route2.Hosts = kong.StringSlice("example.com", "demo.example.com")
 	route2.Service = &kong.Service{
-		ID:   kong.String("service1-id"),
-		Name: kong.String("service1-name"),
+		ID: kong.String("service1-id"),
 	}
 	assert.NotNil(route2.Service)
 	err = collection.Add(route2)
@@ -99,8 +98,7 @@ func TestRouteGetMemoryReference(t *testing.T) {
 	route.ID = kong.String("first")
 	route.Hosts = kong.StringSlice("example.com", "demo.example.com")
 	route.Service = &kong.Service{
-		ID:   kong.String("service1-id"),
-		Name: kong.String("service1-name"),
+		ID: kong.String("service1-id"),
 	}
 	assert.NotNil(route.Service)
 	err := collection.Add(route)
@@ -129,8 +127,7 @@ func TestRouteDelete(t *testing.T) {
 	route.ID = kong.String("first")
 	route.Hosts = kong.StringSlice("example.com", "demo.example.com")
 	route.Service = &kong.Service{
-		ID:   kong.String("service1-id"),
-		Name: kong.String("service1-name"),
+		ID: kong.String("service1-id"),
 	}
 	err := collection.Add(route)
 	assert.Nil(err)
@@ -156,8 +153,7 @@ func TestRouteGetAll(t *testing.T) {
 	route.ID = kong.String("first")
 	route.Hosts = kong.StringSlice("example.com", "demo.example.com")
 	route.Service = &kong.Service{
-		ID:   kong.String("service1-id"),
-		Name: kong.String("service1-name"),
+		ID: kong.String("service1-id"),
 	}
 	err := collection.Add(route)
 	assert.Nil(err)
@@ -167,8 +163,7 @@ func TestRouteGetAll(t *testing.T) {
 	route2.ID = kong.String("second")
 	route2.Hosts = kong.StringSlice("example.com", "demo.example.com")
 	route2.Service = &kong.Service{
-		ID:   kong.String("service1-id"),
-		Name: kong.String("service1-name"),
+		ID: kong.String("service1-id"),
 	}
 	err = collection.Add(route2)
 	assert.Nil(err)
@@ -179,7 +174,7 @@ func TestRouteGetAll(t *testing.T) {
 	assert.Equal(2, len(routes))
 }
 
-func TestRouteGetAllByServiceName(t *testing.T) {
+func TestRouteGetAllByServiceID(t *testing.T) {
 	assert := assert.New(t)
 	collection := routesCollection()
 
@@ -199,8 +194,7 @@ func TestRouteGetAllByServiceName(t *testing.T) {
 				ID:   kong.String("target2-id"),
 				Name: kong.String("target2-name"),
 				Service: &kong.Service{
-					ID:   kong.String("upstream1-id"),
-					Name: kong.String("upstream1-name"),
+					ID: kong.String("upstream1-id"),
 				},
 			},
 		},
@@ -209,8 +203,7 @@ func TestRouteGetAllByServiceName(t *testing.T) {
 				ID:   kong.String("target3-id"),
 				Name: kong.String("target3-name"),
 				Service: &kong.Service{
-					ID:   kong.String("upstream2-id"),
-					Name: kong.String("upstream2-name"),
+					ID: kong.String("upstream2-id"),
 				},
 			},
 		},
@@ -219,8 +212,7 @@ func TestRouteGetAllByServiceName(t *testing.T) {
 				ID:   kong.String("target4-id"),
 				Name: kong.String("target4-name"),
 				Service: &kong.Service{
-					ID:   kong.String("upstream2-id"),
-					Name: kong.String("upstream2-name"),
+					ID: kong.String("upstream2-id"),
 				},
 			},
 		},
@@ -234,12 +226,4 @@ func TestRouteGetAllByServiceName(t *testing.T) {
 	targets, err := collection.GetAllByServiceID("upstream1-id")
 	assert.Nil(err)
 	assert.Equal(2, len(targets))
-
-	targets, err = collection.GetAllByServiceName("upstream2-name")
-	assert.Nil(err)
-	assert.Equal(2, len(targets))
-
-	targets, err = collection.GetAllByServiceName("upstream1-id")
-	assert.Nil(err)
-	assert.Equal(0, len(targets))
 }
