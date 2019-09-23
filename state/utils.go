@@ -22,10 +22,6 @@ var errIDRequired = errors.New("ID is required")
 
 // error annotation messages
 const (
-	getFailed      = "lookup failed"
-	insertFailed   = "insert failed"
-	updateFailed   = "update failed"
-	deleteFailed   = "delete failed"
 	unexpectedType = "unexpected type found"
 )
 

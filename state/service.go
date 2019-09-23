@@ -3,7 +3,6 @@ package state
 import (
 	memdb "github.com/hashicorp/go-memdb"
 	"github.com/hbagdi/deck/utils"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -50,7 +49,7 @@ func (k *ServicesCollection) Add(service Service) error {
 
 	err = txn.Insert(serviceTableName, &service)
 	if err != nil {
-		return errors.Wrap(err, insertFailed)
+		return err
 	}
 	txn.Commit()
 	return nil
@@ -83,7 +82,7 @@ func (k *ServicesCollection) Get(nameOrID string) (*Service, error) {
 		if err == ErrNotFound {
 			return nil, ErrNotFound
 		}
-		return nil, errors.Wrap(err, getFailed)
+		return nil, err
 	}
 	return svc, nil
 }
@@ -95,16 +94,20 @@ func (k *ServicesCollection) Update(service Service) error {
 	if utils.Empty(service.ID) {
 		return errIDRequired
 	}
-	err := k.Delete(*service.ID)
+
+	txn := k.db.Txn(true)
+	defer txn.Abort()
+
+	err := deleteService(txn, *service.ID)
 	if err != nil {
 		return err
 	}
-	txn := k.db.Txn(true)
-	defer txn.Abort()
+
 	err = txn.Insert(serviceTableName, &service)
 	if err != nil {
-		return errors.Wrap(err, "update failed")
+		return err
 	}
+
 	txn.Commit()
 	return nil
 }
@@ -133,7 +136,7 @@ func (k *ServicesCollection) Delete(nameOrID string) error {
 
 	err := deleteService(txn, nameOrID)
 	if err != nil {
-		return errors.Wrap(err, deleteFailed)
+		return err
 	}
 
 	txn.Commit()
@@ -147,7 +150,7 @@ func (k *ServicesCollection) GetAll() ([]*Service, error) {
 
 	iter, err := txn.Get(serviceTableName, all, true)
 	if err != nil {
-		return nil, errors.Wrapf(err, getFailed)
+		return nil, err
 	}
 
 	var res []*Service
