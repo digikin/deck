@@ -2,6 +2,7 @@ package state
 
 import (
 	memdb "github.com/hashicorp/go-memdb"
+	"github.com/hbagdi/deck/utils"
 	"github.com/pkg/errors"
 )
 
@@ -13,16 +14,15 @@ var serviceTableSchema = &memdb.TableSchema{
 	Name: serviceTableName,
 	Indexes: map[string]*memdb.IndexSchema{
 		id: {
-			Name:   id,
-			Unique: true,
-			// EnforceUnique: true,
+			Name:    id,
+			Unique:  true,
 			Indexer: &memdb.StringFieldIndex{Field: "ID"},
 		},
 		"name": {
-			Name:   "name",
-			Unique: true,
-			// EnforceUnique: true,
-			Indexer: &memdb.StringFieldIndex{Field: "Name"},
+			Name:         "name",
+			Unique:       true,
+			Indexer:      &memdb.StringFieldIndex{Field: "Name"},
+			AllowMissing: true,
 		},
 		all: allIndex,
 	},
@@ -31,48 +31,77 @@ var serviceTableSchema = &memdb.TableSchema{
 // ServicesCollection stores and indexes Kong Services.
 type ServicesCollection collection
 
-// Add adds a service to the collection
+// Add adds a service to the collection.
+// service.ID should not be nil else an error is thrown.
 func (k *ServicesCollection) Add(service Service) error {
+	// TODO abstract this check in the go-memdb library itself
+	if utils.Empty(service.ID) {
+		return errIDRequired
+	}
 	txn := k.db.Txn(true)
 	defer txn.Abort()
-	err := txn.Insert(serviceTableName, &service)
+
+	_, err := getService(txn, *service.ID)
+	if err == nil {
+		return ErrAlreadyExists
+	} else if err != ErrNotFound {
+		return err
+	}
+
+	err = txn.Insert(serviceTableName, &service)
 	if err != nil {
-		return errors.Wrap(err, "insert failed")
+		return errors.Wrap(err, insertFailed)
 	}
 	txn.Commit()
 	return nil
 }
 
-// Get gets a service by name or ID.
-func (k *ServicesCollection) Get(nameOrID string) (*Service, error) {
-	res, err := multiIndexLookup(k.db, serviceTableName,
+func getService(txn *memdb.Txn, nameOrID string) (*Service, error) {
+	res, err := multiIndexLookupUsingTxn(txn, serviceTableName,
 		[]string{"name", id}, nameOrID)
-	if err == ErrNotFound {
-		return nil, ErrNotFound
+	if err != nil {
+		return nil, err
 	}
 
-	if err != nil {
-		return nil, errors.Wrap(err, "service lookup failed")
-	}
-	if res == nil {
-		return nil, ErrNotFound
-	}
 	service, ok := res.(*Service)
 	if !ok {
-		panic("unexpected type found")
+		panic(unexpectedType)
+	}
+	return &Service{Service: *service.DeepCopy()}, nil
+}
+
+// Get gets a service by name or ID.
+func (k *ServicesCollection) Get(nameOrID string) (*Service, error) {
+	if nameOrID == "" {
+		return nil, errIDRequired
 	}
 
-	return &Service{Service: *service.DeepCopy()}, nil
+	txn := k.db.Txn(false)
+	defer txn.Abort()
+	svc, err := getService(txn, nameOrID)
+	if err != nil {
+		if err == ErrNotFound {
+			return nil, ErrNotFound
+		}
+		return nil, errors.Wrap(err, getFailed)
+	}
+	return svc, nil
 }
 
 // Update udpates an existing service.
 // It returns an error if the service is not already present.
 func (k *ServicesCollection) Update(service Service) error {
-	// TODO check if entity is already present or not, throw error if present
-	// TODO abstract this in the go-memdb library itself
+	// TODO abstract this check in the go-memdb library itself
+	if utils.Empty(service.ID) {
+		return errIDRequired
+	}
+	err := k.Delete(*service.ID)
+	if err != nil {
+		return err
+	}
 	txn := k.db.Txn(true)
 	defer txn.Abort()
-	err := txn.Insert(serviceTableName, &service)
+	err = txn.Insert(serviceTableName, &service)
 	if err != nil {
 		return errors.Wrap(err, "update failed")
 	}
@@ -80,40 +109,52 @@ func (k *ServicesCollection) Update(service Service) error {
 	return nil
 }
 
+func deleteService(txn *memdb.Txn, nameOrID string) error {
+	service, err := getService(txn, nameOrID)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Delete(serviceTableName, service)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Delete deletes a service by name or ID.
 func (k *ServicesCollection) Delete(nameOrID string) error {
-	service, err := k.Get(nameOrID)
-
-	if err != nil {
-		return errors.Wrap(err, "looking up service")
+	if nameOrID == "" {
+		return errIDRequired
 	}
 
 	txn := k.db.Txn(true)
 	defer txn.Abort()
 
-	err = txn.Delete(serviceTableName, service)
+	err := deleteService(txn, nameOrID)
 	if err != nil {
-		return errors.Wrap(err, "delete failed")
+		return errors.Wrap(err, deleteFailed)
 	}
+
 	txn.Commit()
 	return nil
 }
 
-// GetAll gets a service by name or ID.
+// GetAll returns all the services.
 func (k *ServicesCollection) GetAll() ([]*Service, error) {
 	txn := k.db.Txn(false)
 	defer txn.Abort()
 
 	iter, err := txn.Get(serviceTableName, all, true)
 	if err != nil {
-		return nil, errors.Wrapf(err, "service lookup failed")
+		return nil, errors.Wrapf(err, getFailed)
 	}
 
 	var res []*Service
 	for el := iter.Next(); el != nil; el = iter.Next() {
 		s, ok := el.(*Service)
 		if !ok {
-			panic("unexpected type found")
+			panic(unexpectedType)
 		}
 		res = append(res, &Service{Service: *s.DeepCopy()})
 	}
