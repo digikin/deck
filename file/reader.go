@@ -37,6 +37,96 @@ func GetStateFromFile(filename string) (*state.KongState,
 	return GetStateFromContent(fileContent)
 }
 
+// GetStateFromFileWithIDMatch resolves IDs
+func GetStateFromFileWithIDMatch(filename string, currentState *state.KongState) (*state.KongState, []string, string, error) {
+	if filename == "" {
+		return nil, nil, "", errors.New("filename cannot be empty")
+	}
+
+	fileContent, err := getContent(filename)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	return GetStateFromContent2(fileContent, currentState)
+}
+
+// GetStateFromContent2 takes the serialized state and returns a Kong.
+// It will return an error if the file representation is invalid
+// or if there is any error during processing.
+// All entities without an ID will get a `placeholder-{iota}` ID
+// assigned to them.
+func GetStateFromContent2(fileContent *Content, currentState *state.KongState) (*state.KongState,
+	[]string, string, error) {
+	count.Reset()
+	d, err := utils.GetKongDefaulter()
+	if err != nil {
+		return nil, nil, "", errors.Wrap(err, "creating defaulter")
+	}
+	var selectTags []string
+	if fileContent.Info != nil {
+		selectTags = fileContent.Info.SelectorTags
+	}
+	workspace := fileContent.Workspace
+	kongState, err := state.NewKongState()
+	if err != nil {
+		return nil, nil, "", err
+	}
+	for _, s := range fileContent.Services {
+		if utils.Empty(s.ID) && utils.Empty(s.Name) {
+			return nil, nil, "", errors.New("service must be have either a name or an ID")
+		}
+		if utils.Empty(s.ID) {
+			svc, err := currentState.Services.Get(*s.Name)
+			if err == state.ErrNotFound {
+				s.ID = kong.String("50782611-4015-4216-9600-b401653e3d81")
+			} else {
+				s.ID = kong.String(*svc.ID)
+			}
+		}
+		if err = utils.MergeTags(&s.Service, selectTags); err != nil {
+			return nil, nil, "", errors.Wrap(err,
+				"merging selector tag with object")
+		}
+		err = d.Set(&s.Service)
+		if err != nil {
+			return nil, nil, "", errors.Wrap(err, "filling in defaults for service")
+		}
+		err = kongState.Services.Add(state.Service{Service: s.Service})
+		if err != nil {
+			return nil, nil, "", err
+		}
+
+		//for _, r := range s.Routes {
+		//	if utils.Empty(r.ID) {
+		//		r.ID = kong.String("placeholder-" +
+		//			strconv.FormatUint(count.Inc(), 10))
+		//	}
+		//	if utils.Empty(r.Name) {
+		//		return nil, nil, "", errors.New("all routes in the file must be named")
+		//	}
+		//	_, err := kongState.Routes.Get(*r.Name)
+		//	if err != state.ErrNotFound {
+		//		return nil, nil, "", errors.Errorf("duplicate route definitions"+
+		//			" found for: '%s'", *r.Name)
+		//	}
+		//	r.Service = s.Service.DeepCopy()
+		//	if err = utils.MergeTags(&r.Route, selectTags); err != nil {
+		//		return nil, nil, "", errors.Wrap(err,
+		//			"merging selector tag with object")
+		//	}
+		//	err = d.Set(&r.Route)
+		//	if err != nil {
+		//		return nil, nil, "", errors.Wrap(err, "filling in defaults for route")
+		//	}
+		//	err = kongState.Routes.Add(state.Route{Route: r.Route})
+		//	if err != nil {
+		//		return nil, nil, "", err
+		//	}
+		//}
+	}
+	return kongState, selectTags, workspace, nil
+}
+
 // GetStateFromContent takes the serialized state and returns a Kong.
 // It will return an error if the file representation is invalid
 // or if there is any error during processing.

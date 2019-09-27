@@ -22,23 +22,23 @@ var syncCmd = &cobra.Command{
 	Long: `Sync command reads the state file and performs operation on Kong
 to get Kong's state in sync with the input state.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		targetState, selectTags, workspace, err :=
-			file.GetStateFromFile(syncCmdKongStateFile)
-		if err != nil {
-			return err
-		}
-		config.Workspace = workspace
+		config.Workspace = ""
 		client, err := utils.GetKongClient(config)
 		if err != nil {
 			return err
 		}
-		dumpConfig.SelectorTags = selectTags
+		dumpConfig.SelectorTags = nil
 		currentState, err := dump.GetState(client, dumpConfig)
 		if err != nil {
 			return err
 		}
-		syncer, _ := diff.NewSyncer(currentState, targetState)
-		errs := solver.Solve(stopChannel, syncer, client, false)
+		targetState, _, _, err :=
+			file.GetStateFromFileWithIDMatch(diffCmdKongStateFile, currentState)
+		if err != nil {
+			return err
+		}
+		s, _ := diff.NewSyncer(currentState, targetState)
+		errs := solver.Solve(stopChannel, s, client, false)
 		if errs != nil {
 			return utils.ErrArray{Errors: errs}
 		}

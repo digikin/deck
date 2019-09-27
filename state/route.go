@@ -37,6 +37,7 @@ var routeTableSchema = &memdb.TableSchema{
 					},
 				},
 			},
+			AllowMissing: true,
 		},
 	},
 }

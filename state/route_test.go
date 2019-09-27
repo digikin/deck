@@ -15,16 +15,17 @@ func TestRouteInsert(t *testing.T) {
 	assert := assert.New(t)
 	collection := routesCollection()
 
+	// service-less routes
 	var route Route
 	route.Name = kong.String("my-route")
 	route.ID = kong.String("first")
 	route.Hosts = kong.StringSlice("example.com", "demo.example.com")
 	err := collection.Add(route)
-	assert.NotNil(err)
+	assert.Nil(err)
 
 	var route2 Route
-	route2.Name = kong.String("my-route")
-	route2.ID = kong.String("first")
+	route2.Name = kong.String("my-route2")
+	route2.ID = kong.String("second")
 	route2.Hosts = kong.StringSlice("example.com", "demo.example.com")
 	route2.Service = &kong.Service{
 		ID: kong.String("service1-id"),

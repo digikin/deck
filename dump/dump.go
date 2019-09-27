@@ -30,10 +30,6 @@ func GetState(client *kong.Client, config Config) (*state.KongState, error) {
 		return nil, errors.Wrap(err, "creating new in-memory state of Kong")
 	}
 	for _, s := range raw.Services {
-		if utils.Empty(s.Name) {
-			return nil, errors.New("service '" + *s.ID + "' does not" +
-				" have a name. decK needs services to be named.")
-		}
 		err := kongState.Services.Add(state.Service{Service: *s})
 		if err != nil {
 			return nil, errors.Wrap(err, "inserting service into state")

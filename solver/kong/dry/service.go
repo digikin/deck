@@ -5,8 +5,6 @@ import (
 	"github.com/hbagdi/deck/diff"
 	"github.com/hbagdi/deck/print"
 	"github.com/hbagdi/deck/state"
-	"github.com/hbagdi/deck/utils"
-	"github.com/hbagdi/go-kong/kong"
 )
 
 // ServiceCRUD implements Actions interface
@@ -33,8 +31,15 @@ func (s *ServiceCRUD) Create(arg ...crud.Arg) (crud.Arg, error) {
 	event := eventFromArg(arg[0])
 	service := serviceFromStuct(event)
 
-	print.CreatePrintln("creating service", *service.Name)
-	service.ID = kong.String(utils.UUID())
+	svc := ""
+	if service.ID != nil {
+		svc = *service.ID
+	}
+	if service.Name != nil {
+		svc = *service.Name
+	}
+
+	print.CreatePrintln("creating service", svc)
 	return service, nil
 }
 
@@ -46,7 +51,15 @@ func (s *ServiceCRUD) Delete(arg ...crud.Arg) (crud.Arg, error) {
 	event := eventFromArg(arg[0])
 	service := serviceFromStuct(event)
 
-	print.DeletePrintln("deleting service", *service.Name)
+	svc := ""
+	if service.ID != nil {
+		svc = *service.ID
+	}
+	if service.Name != nil {
+		svc = *service.Name
+	}
+
+	print.DeletePrintln("deleting service", svc)
 	return service, nil
 }
 
@@ -69,6 +82,14 @@ func (s *ServiceCRUD) Update(arg ...crud.Arg) (crud.Arg, error) {
 	if err != nil {
 		return nil, err
 	}
-	print.UpdatePrintf("updating service %s\n%s", *service.Name, diff)
+	svc := ""
+	if service.ID != nil {
+		svc = *service.ID
+	}
+	if service.Name != nil {
+		svc = *service.Name
+	}
+
+	print.UpdatePrintf("updating service %s\n%s", svc, diff)
 	return service, nil
 }
