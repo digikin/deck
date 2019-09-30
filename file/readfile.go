@@ -2,15 +2,17 @@ package file
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 
+	yaml "github.com/ghodss/yaml"
 	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 // getContent reads reads all the YAML and JSON files in the directory or the
@@ -73,6 +75,30 @@ func getReaders(fileOrDir string) ([]io.Reader, error) {
 	return res, nil
 }
 
+func validate(content []byte) error {
+	var c map[string]interface{}
+	err := yaml.Unmarshal(content, &c)
+	if err != nil {
+		return err
+	}
+	c = ensureJSON(c)
+	schemaLoader := gojsonschema.NewStringLoader(contentSchema)
+	documentLoader := gojsonschema.NewGoLoader(c)
+	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
+	if err != nil {
+		panic(err.Error())
+	}
+	if result.Valid() {
+		return nil
+	} else {
+		for _, desc := range result.Errors() {
+			fmt.Printf("- %s\n", desc)
+		}
+		panic("Fuck")
+	}
+	return nil
+}
+
 // readContent reads all the byes until io.EOF and unmarshals the read
 // bytes into Content.
 func readContent(reader io.Reader) (*Content, error) {
@@ -80,6 +106,10 @@ func readContent(reader io.Reader) (*Content, error) {
 	var bytes []byte
 	var err error
 	bytes, err = ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	err = validate(bytes)
 	if err != nil {
 		return nil, err
 	}

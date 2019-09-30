@@ -3,8 +3,7 @@ _info:
   - managed-by-deck
   - org-unit-42
 services:
-- name: svc1
-  host: mockbin.org
+- host: mockbin.org
   tags:
   - team-svc1
   routes:

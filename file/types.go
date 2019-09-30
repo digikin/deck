@@ -51,8 +51,8 @@ type Plugin struct {
 	kong.Plugin `yaml:",inline,omitempty"`
 }
 
-// Consumer represents a consumer in Kong.
-type Consumer struct {
+// Consumer2 represents a consumer in Kong.
+type Consumer2 struct {
 	kong.Consumer `yaml:",inline,omitempty"`
 	Plugins       []*Plugin                `json:"plugins,omitempty" yaml:",omitempty"`
 	KeyAuths      []*kong.KeyAuth          `json:"keyauth_credentials,omitempty" yaml:"keyauth_credentials,omitempty"`
@@ -68,15 +68,17 @@ type Info struct {
 	SelectorTags []string `json:"select_tags,omitempty" yaml:"select_tags,omitempty"`
 }
 
+//go:generate go run ./codegen/main.go
+
 // Content represents a serialized Kong state.
 type Content struct {
 	FormatVersion  string          `json:"_format_version,omitempty" yaml:"_format_version,omitempty"`
 	Info           *Info           `json:"_info,omitempty" yaml:"_info,omitempty"`
 	Workspace      string          `json:"_workspace,omitempty" yaml:"_workspace,omitempty"`
 	Services       []Service       `json:"services,omitempty" yaml:",omitempty"`
+	Consumers      []Consumer2     `json:"consumers,omitempty" yaml:",omitempty"`
+	Plugins        []Plugin        `json:"plugins,omitempty" yaml:",omitempty"`
 	Upstreams      []Upstream      `json:"upstreams,omitempty" yaml:",omitempty"`
 	Certificates   []Certificate   `json:"certificates,omitempty" yaml:",omitempty"`
 	CACertificates []CACertificate `json:"ca_certificates,omitempty" yaml:"ca_certificates,omitempty"`
-	Plugins        []Plugin        `json:"plugins,omitempty" yaml:",omitempty"`
-	Consumers      []Consumer      `json:"consumers,omitempty" yaml:",omitempty"`
 }

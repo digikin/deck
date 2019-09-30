@@ -175,7 +175,7 @@ func KongStateToFile(kongState *state.KongState,
 		return err
 	}
 	for _, c := range consumers {
-		c := Consumer{Consumer: c.Consumer}
+		c := Consumer2{Consumer: c.Consumer}
 		plugins, err := kongState.Plugins.GetAllByConsumerID(*c.ID)
 		if err != nil {
 			return err
